@@ -1,0 +1,81 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+# Install Java
+- task: UseJavaVersion@0
+  inputs:
+    versionSpec: '11'
+    addToPath: true
+  displayName: 'Install Java'
+
+# Create an HTML file
+- script: |
+    echo '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hello World</title>
+    </head>
+    <body>
+        <h1>Hello, World!</h1>
+    </body>
+    </html>' > index.html
+  displayName: 'Create HTML File'
+
+# Create a Simple Java HTTP Server
+- script: |
+    echo 'import java.io.*; 
+    import java.net.*;
+
+    public class SimpleHttpServer {
+        public static void main(String[] args) throws IOException {
+            int port = 8080;
+            ServerSocket serverSocket = new ServerSocket(port);
+            System.out.println("Server started at http://localhost:" + port);
+            
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                
+                String requestLine = in.readLine();
+                if (requestLine != null && requestLine.startsWith("GET")) {
+                    File file = new File("index.html");
+                    BufferedReader fileReader = new BufferedReader(new FileReader(file));
+                    
+                    out.println("HTTP/1.1 200 OK");
+                    out.println("Content-Type: text/html");
+                    out.println();
+                    
+                    String line;
+                    while ((line = fileReader.readLine()) != null) {
+                        out.println(line);
+                    }
+                    fileReader.close();
+                }
+                out.close();
+                in.close();
+                clientSocket.close();
+            }
+        }
+    }' > SimpleHttpServer.java
+  displayName: 'Create Java HTTP Server'
+
+# Compile and Run the Java HTTP Server
+- script: |
+    javac SimpleHttpServer.java
+    java SimpleHttpServer &
+    sleep 10
+    curl http://localhost:8080
+  displayName: 'Compile and Run Java HTTP Server'
+
